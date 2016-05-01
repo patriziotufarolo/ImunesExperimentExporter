@@ -41,17 +41,17 @@ class ImunesExperimentExporter(object):
 
         if active >= 0:
             current = model[active][0]
-        go = self.glade.get_object
+            self.currentSelectedExperiment = current
+            go = self.glade.get_object
 
-        self.currentSelectedExperiment = current
-        containersList = go("containers")
-        containersCtl = go("tree_containers")
+            containersList = go("containers")
+            containersCtl = go("tree_containers")
 
-        containersList.clear()
+            containersList.clear()
 
-        for element in self.experiments[current]:
-            containersList.append([ element["name"] , element["hn"] ])
-        containersCtl.set_cursor(0)
+            for element in self.experiments[current]:
+                containersList.append([ element["name"] , element["hn"] ])
+            containersCtl.set_cursor(0)
 
     def onContainerChange(self, widget, data=None):
         model, treeiter = widget.get_selection().get_selected()
