@@ -21,12 +21,12 @@ class ImunesExperimentExporter(object):
             ctname = str(container["Names"][0])[1:]
             ctid = str(container["Id"])
             try:
-                containersDict[ctname[:-3]]
+                containersDict[ctname.split(".")[0]]
             except KeyError:
-                containersDict[ctname[:-3]] = []
+                containersDict[ctname.split(".")[0]] = []
             inspection = cli.inspect_container(ctid)
             cthn = inspection["Config"]["Hostname"]
-            containersDict[ctname[:-3]].append({"id":ctid, "name":ctname, "hn":cthn})
+            containersDict[ctname.split(".")[0]].append({"id":ctid, "name":ctname, "hn":cthn})
         return containersDict
 
     def onDeleteWindow(self, widget, event=None):
@@ -58,8 +58,7 @@ class ImunesExperimentExporter(object):
         if treeiter is not None:
             row = model[treeiter]
             current = model[treeiter][0]
-        go = self.glade.get_object
-        self.currentSelectedContainer = current
+            self.currentSelectedContainer = current
 
     def onExportEverythingBtnClicked(self, event):
         if not self.currentSelectedExperiment:
@@ -149,6 +148,9 @@ class ImunesExperimentExporter(object):
 
     def exportAllContainers(self, dest_path):
         for container in self.experiments[self.currentSelectedExperiment]:
+            this_dest_path = "{}/{}".format(dest_path, "{}_{}".format(container["hn"],container["name"]))
+            if not os.path.isdir(this_dest_path):
+                os.makedirs(this_dest_path)
             diffs = cli.diff(container["id"])
             for diff in diffs:
                 if diff["Path"].startswith("/etc") or \
@@ -160,8 +162,8 @@ class ImunesExperimentExporter(object):
                     exists_exec = cli.exec_create(container["id"],"stat --printf=\"%F\" {}".format(diff["Path"]),True,True,False,True)
                     result = cli.exec_start(exists_exec)
                     if result == "directory":
-                        if not os.path.isdir("{}{}".format(dest_path, diff["Path"])):
-                            os.makedirs("{}{}".format(dest_path, diff["Path"]))
+                        if not os.path.isdir("{}{}".format(this_dest_path, diff["Path"])):
+                            os.makedirs("{}{}".format(this_dest_path, diff["Path"]))
                     elif result == "regular file":
                         stream, stat = cli.get_archive(container["id"], diff["Path"])
                         with tempfile.NamedTemporaryFile() as file:
@@ -170,7 +172,7 @@ class ImunesExperimentExporter(object):
                             file.seek(0)
                             file_inside_tar = os.path.basename(diff["Path"])
                             real_file = untar_file(file, file_inside_tar)
-                            with open("{}{}".format(dest_path, diff["Path"]), "w") as outfile:
+                            with open("{}{}".format(this_dest_path, diff["Path"]), "w") as outfile:
                                 for b in real_file:
                                     outfile.write(b)
                                 outfile.close()
