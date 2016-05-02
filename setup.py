@@ -19,7 +19,7 @@ setup(
     package_data = {
         '': ['*.txt'],
         '': ['LICENSE'],
-        '': ['README'],
+        '': ['README.md'],
         '': ['*.glade']
     }
 )
