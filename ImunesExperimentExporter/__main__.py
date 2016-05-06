@@ -2,7 +2,7 @@ import gi, sys, signal, os, tempfile, tarfile, mmap
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, GObject
 from docker import Client
-cli = Client(base_url='unix://var/run/docker.sock')
+cli = Client(base_url='unix://var/run/docker.sock', version='auto')
 
 def untar_file(tardata, filename):
     with tarfile.open(mode='r', fileobj=tardata) as t:
