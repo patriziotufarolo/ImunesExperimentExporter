@@ -26,7 +26,9 @@ class ImunesExperimentExporter(object):
                 containersDict[ctname.split(".")[0]] = []
             inspection = cli.inspect_container(ctid)
             cthn = inspection["Config"]["Hostname"]
-            containersDict[ctname.split(".")[0]].append({"id":ctid, "name":ctname, "hn":cthn})
+            cthostsfile = inspection.get("HostsPath")
+            ctresolvconffile = inspection.get("ResolvConfPath")
+            containersDict[ctname.split(".")[0]].append({"id":ctid, "name":ctname, "hn":cthn, "etc-hosts":cthostsfile, "etc-resolv-conf": ctresolvconffile})
         return containersDict
 
     def onDeleteWindow(self, widget, event=None):
@@ -212,14 +214,53 @@ class ImunesExperimentExporter(object):
         for container in self.experiments[self.currentSelectedExperiment]:
             if container["name"] == self.currentSelectedContainer:
                 fd, tar = tempfile.mkstemp( )
+                print("SOURCE_PATH", source_path)
+                resolv_conf_path = os.path.join(source_path, "etc/resolv.conf")
+                hosts_file_path = os.path.join(source_path, "etc/hosts")
+                print(resolv_conf_path)
+                handle_resolv_conf = False
+                if os.path.exists(resolv_conf_path):
+                    resolv_conf = ""
+                    with open(resolv_conf_path, "r") as resolv_conf_file:
+                        resolv_conf = resolv_conf_file.read()
+
+                    os.unlink(resolv_conf_path)
+                    handle_resolv_conf = True
+
+                handle_hosts_file = False
+                if os.path.exists(hosts_file_path):
+                    hosts = ""
+                    with open(hosts_file_path, "r") as hosts_file:
+                        hosts = hosts_file.read()
+                    handle_hosts_file = True
+                    os.unlink(hosts_file_path)
 
                 with tarfile.open(tar, "w") as otar:
                     otar.add( source_path, '.' )
+
                 _file = os.fdopen(fd, 'rb')
                 _filedata = mmap.mmap( _file.fileno() , 0, access=mmap.ACCESS_READ)
                 cli.put_archive(container["id"], "/", _filedata)
 
+                if handle_hosts_file:
+                    ct_hosts_file = open(container["etc-hosts"], "w")
+                    ct_hosts_file.write(hosts)
+                    ct_hosts_file.close()
+                    hosts_restore = open(hosts_file_path,"w")
+                    hosts_restore.write(hosts)
+                    hosts_restore.close()
+                if handle_resolv_conf:
+                    ct_resolv_conf_file = open(container["etc-resolv-conf"], "w")
+                    ct_resolv_conf_file.write(resolv_conf)
+                    ct_resolv_conf_file.close()
 
+                    ct_resolv_conf_hash = open(container["etc-resolv-conf"]+".hash", "w")
+                    import hashlib
+                    ct_resolv_conf_hash.write("sha256:"+hashlib.sha256(resolv_conf).hexdigest())
+                    ct_resolv_conf_hash.close()
+                    resolv_conf_restore_file = open(resolv_conf_path,"w")
+                    resolv_conf_restore_file.write(resolv_conf)
+                    resolv_conf_restore_file.close()
 
 def quitApplication(signum):
     Gtk.main_quit()
